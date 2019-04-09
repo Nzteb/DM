@@ -2,10 +2,22 @@
 # -*- coding: utf-8 -*-
 from sklearn.metrics import make_scorer
 from customClassifiers import CustomModelWithThreshold
-from sklearn.model_selection import cross_val_score,cross_val_predict
+from sklearn.model_selection import cross_val_score,cross_val_predict, cross_validate
+from sklearn.model_selection import StratifiedKFold
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
+
+
+
+cv = StratifiedKFold(n_splits=10, random_state=42)
+# raw profit function provided by the teachers
+# same as dmc_profit
+def profit_scorer(y, y_pred):
+    profit_matrix = {(0,0): 0, (0,1): -5, (1,0): -25, (1,1): 5}
+    return sum(profit_matrix[(pred, actual)] for pred, actual in zip(y_pred, y))
+#sklearn custom score function
+profit_scoring = make_scorer(profit_scorer, greater_is_better=True)
 
 
 # raw profit function of the competition
@@ -18,8 +30,8 @@ def dmc_profit(y_true, y_pred):
     #TN = sum((cvres['true'] == 0) & (cvres['cvpredict'] == 0))
     FP = sum((y_true == 0) & (y_pred == 1))
     FN = sum((y_true == 1) & (y_pred == 0))
-    return 5*TP -25*FP -5*FN
-
+    profit = 5*TP -25*FP -5*FN
+    return profit
 
 # sklearn custom score function defined by the raw dmc_profit
 # e. g. can be used in cross validation 
@@ -27,6 +39,18 @@ def dmc_profit(y_true, y_pred):
 score_dmc_profit = make_scorer(dmc_profit, greater_is_better=True)
 
 
+
+# takes models and calculates the cv profit
+# as shown by the chair
+def cv_profits_for_models(models, X, y):
+    for model in models:
+        cv = StratifiedKFold(n_splits=10, random_state=42)
+        profit = sum(cross_validate(model, X, y=y, cv=10, scoring=profit_scoring)['test_score'])
+        print("Model: " + type(model).__name__)
+        print("Estimated Profit: " + str(profit))
+        print("")
+    
+    
 # takes any sklearn model, X, y , num folds --> none
 # outputs a plot of cross validation mean scores of the custom profit function
 # for different prediction thresholds (e. g. predicting fraud=1 if probab = x)
@@ -39,7 +63,7 @@ def plot_cv_confidence_vs_profit(model, X, y,cvfolds, modelname="ModelName"):
         # calc cross val mean custom score
         # you have to multiply with the number of folds s. t. you get
         # an average for the complete dataset
-        profit = sum((cross_val_score(wrap, X, y, cv=cvfolds, scoring=score_dmc_profit)))
+        profit = sum((cross_val_score(wrap, X, y, cv=cvfolds, scoring=profit_scoring)))
         thresholds.append(threshold)
         profits.append(profit)
     

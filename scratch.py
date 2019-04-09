@@ -23,7 +23,7 @@ import itertools
 
 train = pd.read_csv('train.csv',delimiter="|")
 train['totalItems'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
-
+test = pd.read_csv('test.csv',delimiter="|")
 
 print(train.columns)
 print("")
@@ -45,18 +45,87 @@ for i in range(6):
     num = sum(lvl["fraud"] == 1) 
     print("num frauds in trust level" + ": " + str(i+1) + " " +  str(num))   
 
-
 corr = train.corr()
 
+
+from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.tree import DecisionTreeClassifier as DT
+from sklearn import svm as SVM
+from sklearn.naive_bayes import GaussianNB as NB
+from sklearn.metrics import accuracy_score as acc
+from sklearn.neural_network import MLPClassifier as NET
+
+
+
+
+train = pd.read_csv('train.csv',delimiter="|")
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
 y = train.pop('fraud')
-test = pd.read_csv('test.csv', delimiter="|")
+
 scaler = StandardScaler()
 scaler.fit(train)
 train = scaler.transform(train)
 
+
+np.random.seed(8)
+profits = []
+regu = []
+for c in np.arange(1,10,0.5):
+    lr = LR(C=c)
+    profits.append(np.sum(cross_val_score(lr,train,y,scoring=score_dmc_profit,cv=5)))
+    regu.append(c)
+   
+regu = list(reversed(regu))
+profits = list(reversed(profits))
+regu = 1/np.array(regu)
+plt.plot(regu,profits)    
+plt.legend("Profit")    
+    
+plot_cv_confidence_vs_profit(LR(C=10),train,y,cvfolds=5, modelname="LogisticReg")
+
+
+
+
+
+
 lr = LR()
+svm = SVM.SVC()
+dt = DT()
+knn=KNN(5)
+nb = NB()
 
 
+tuplesf1 = []
+for model in [(lr, "logistic"),(svm, "SVM"), (dt, "DecTree"),
+              (knn, "KNN"), (nb, "NaiveBayes")]:
+    
+    score = np.mean(cross_val_score(model[0], train,y,cv=5,scoring="f1"))
+    alist = []
+    alist.append(model[1])
+    alist.append(score)
+    tuplesf1.append(alist)
+
+
+tuplesacc = []
+for model in [(lr, "logistic"),(svm, "SVM"), (dt, "DecTree"),
+              (knn, "KNN"), (nb, "NaiveBayes")]:
+    
+    score = np.mean(cross_val_score(model[0], train,y,cv=5,scoring="accuracy"))
+    alist = []
+    alist.append(model[1])
+    alist.append(score)
+    tuplesacc.append(alist)    
+
+
+tuplesprofit = []
+for model in [(lr, "logistic"),(svm, "SVM"), (dt, "DecTree"),
+              (knn, "KNN"), (nb, "NaiveBayes")]:
+    
+    score = np.sum(cross_val_score(model[0], train,y,cv=5,scoring=score_dmc_profit))
+    alist = []
+    alist.append(model[1])
+    alist.append(score)
+    tuplesprofit.append(alist)
 
 
 

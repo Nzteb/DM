@@ -5,14 +5,19 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.model_selection import cross_val_score
-
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.tree import DecisionTreeClassifier as DT
+from sklearn import svm as SVM
+from sklearn.naive_bayes import GaussianNB as NB
+
 
 # custom imports
-from funcs import plot_cv_confidence_vs_profit, score_dmc_profit,dmc_profit,cv_preds_and_confusion_matrix
+from funcs import plot_cv_confidence_vs_profit, score_dmc_profit,dmc_profit,cv_preds_and_confusion_matrix,cv_profits_for_models
 from customClassifiers import CustomModelWithThreshold
 
 
@@ -20,9 +25,8 @@ from customClassifiers import CustomModelWithThreshold
 train = pd.read_csv('train.csv' ,delimiter="|")
 test = pd.read_csv('test.csv', delimiter="|")
 y = train.pop('fraud')
-
 # example cross validation with the dmc19 custom score function
-lr = LogisticRegression()
+lr = LogisticRegression(C=10)
 cv_scores = cross_val_score(lr,train,y, cv=5, scoring=score_dmc_profit)
 print("CV profit: " +   str(sum(cv_scores)))
 
@@ -33,7 +37,6 @@ print("Training Profit: " + str(dmc_profit(y,y_pred)))
 
 
 ### add new feature and normalize
-
 train['totalItems'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
 cols = train.columns
 scaler = StandardScaler()
@@ -55,7 +58,7 @@ predresults = cv_preds_and_confusion_matrix(lr,train,y,cvfolds=5,threshold=0.47)
 
 
 # plot the first two principal component scores and mark the fraudsters
-pca = PCA(n_components=5)
+pca = PCA(n_components=7)
 xax = 0
 yax = 1
 train_tr = pca.fit(train).transform(train)
@@ -76,13 +79,13 @@ plt.scatter(fp[:,xax], fp[:,yax], color="red")
 plt.title("1,2PCA scores; yellow:fraud; blue:FN; red: FP")
 
 
+# check some models and compare them with respect to F1, Acc and Profit
+models = [LogisticRegression(C=10), SVM.SVC(), DT(), KNN(5), NB()]
+#uses the profit provided by the teachers
+cv_profits_for_models(models,train,y)
 
 
 
-
-
-
-    
 
 
     
