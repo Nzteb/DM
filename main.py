@@ -43,7 +43,6 @@ scaler = StandardScaler()
 scaler.fit(train)
 train = scaler.transform(train)
 
-
 # plotting cross validation profits for different prediction thresholds
 # you can pass any model
 plot_cv_confidence_vs_profit(lr, train, y, 5, "LogisticReg")
@@ -54,7 +53,7 @@ plot_cv_confidence_vs_profit(rf, train, y, 5, "RandomForest")
 ### example use of the cross validation confusion matrix function ####
 # also prints the confusion matrix
 # takes a prediction threshold
-predresults = cv_preds_and_confusion_matrix(lr,train,y,cvfolds=5,threshold=0.47)
+predresults = cv_preds_and_confusion_matrix(lr,train,y,cvfolds=5,threshold=0.5)
 
 
 # plot the first two principal component scores and mark the fraudsters
@@ -78,7 +77,8 @@ fp = nonfrauds[(nonfraudresults["true"] == 0) & (nonfraudresults["cvpredict"] ==
 plt.scatter(fp[:,xax], fp[:,yax], color="red")
 plt.title("1,2PCA scores; yellow:fraud; blue:FN; red: FP")
 
-
+print("")
+print("")
 # check some models and compare them with respect to F1, Acc and Profit
 models = [LogisticRegression(C=10), SVM.SVC(), DT(), KNN(5), NB()]
 #uses the profit provided by the teachers
