@@ -10,6 +10,49 @@ from sklearn.linear_model import LogisticRegression as LR
 # for documentation about how to write a custom model
 
 
+
+
+
+
+# takes a sklearn model and hard-predicts all instances with trust level > 2 as non fraud
+# note: assumes trust level is the first feature in the feature list!
+class TrustHard(BaseEstimator, ClassifierMixin):
+    def __init__(self, model):
+        #sklearn model object
+        self.model = model
+        
+          
+    def fit(self,X,y):
+        self.classes_ = np.unique(y)
+        
+        # only train on instances with trust==1 or 2
+        # note dataset might be normalized 
+        # ASSUME trust is the first variable
+        uniq  = np.unique(X[:,0])
+        val2 = uniq[1] 
+        print(val2)
+        # this is what you expect from train set
+        assert(val2 == -0.8202756459239328 )
+        idx =  (X[:,0]<= val2)
+        low_trust = X[idx,:]
+        y_l = y[idx]
+        self.model.fit(low_trust,y_l)
+        return self
+
+    def predict(self,X):
+        preds = self.model.predict(X)
+        uniq  = np.unique(X[:,0])
+        val2 = uniq[1]
+        assert(val2 == -0.8202756459239328 )
+        idx =  (X[:,0]>val2)
+        preds[idx] = 0
+        return preds
+
+    def predict_proba(self,X):
+        pass
+    
+
+
 # this model takes any classifier model and a threshold as input
 # the predict of this model is the predict of the input model but the
 # prediction threshold is not 0.5 instead it is the custom threshold
@@ -38,7 +81,7 @@ class CustomModelWithThreshold(BaseEstimator, ClassifierMixin):
 # learns with the pocket variant of the perceptron learning algorithm 
 # the learning process here is adapted to the DMC cost matrix    
 class PerceptronLearner(BaseEstimator, ClassifierMixin):
-    def __init__(self, epochs): 
+    def __init__(self, epochs=250): 
         self.epochs = epochs
         self.coef_ = None
         
@@ -52,9 +95,8 @@ class PerceptronLearner(BaseEstimator, ClassifierMixin):
         sc = np.dot(X,self.coef_)
         sc[sc>=0]=1
         sc[sc<0]=0
-        return sc
-    
-    
+        return np.int64(sc)
+
 
     def predict_proba(self,X0):
         # there are actually no probabs so use the predicions
@@ -126,6 +168,35 @@ class PerceptronLearner(BaseEstimator, ClassifierMixin):
         return self
         
         
+
+
+
+# takes a list of models and weights and predicts according to a voting scheme
+class VoteClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self, modellist=[], weights=[]):
+       # assert(len(modellist)==len(weights))
+        self.set_params(modellist=modellist, weights=weights)
+
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)   
+        modellist = self.get_params()['modellist']
+        for model in modellist:
+            model.fit(X,y)
+        return self
+
+    def predict(self, X):
+        preds = np.zeros(len(X))
+        idx = 0
+        weights = self.get_params()['weights']
+        for model in self.get_params()['modellist']:
+            preds = preds + weights[idx] * model.predict(X)
+            idx += 1
+        preds = preds / sum(weights)
+        preds[preds>0.5] = 1
+        preds[preds<=0.5] = 0
+        return preds
+        
+            
       
      
         

@@ -19,6 +19,85 @@ import itertools
 ##### only random stuff in this file run cells individually
 
 
+
+
+#%%
+
+#investigate different linear models
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.tree import DecisionTreeClassifier as DT
+from sklearn import svm as SVM
+from sklearn.naive_bayes import GaussianNB as NB
+from sklearn.linear_model import SGDClassifier
+from xgboost import XGBClassifier
+
+
+# custom imports
+from funcs import plot_cv_confidence_vs_profit, score_dmc_profit,dmc_profit,cv_preds_and_confusion_matrix,cv_profits_for_models
+from customClassifiers import CustomModelWithThreshold,PerceptronLearner, TrustHard, VoteClassifier
+
+
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+test = pd.read_csv('test.csv', delimiter="|")
+y = train.pop('fraud')
+
+### add new feature and normalize
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
+train['valuePerLineItem'] = train['grandTotal'] / train['scannedLineItemsTotal']
+#train['quantityModificationsPerLineItem'] = train['quantityModifications'] / train['scannedLineItemsTotal']
+cols = train.columns
+scaler = StandardScaler()
+scaler.fit(train)
+train = scaler.transform(train)
+
+cv = 10
+res1 = cv_preds_and_confusion_matrix(LogisticRegression(C=10),train,y,cvfolds=cv, probs=False)
+res2 = cv_preds_and_confusion_matrix(SVM.SVC(gamma='auto'), train,y,cvfolds=cv,probs=False)
+res3 = cv_preds_and_confusion_matrix(TrustHard(LogisticRegression(C=10)), train,y,cvfolds=cv, probs=False)
+res4 = cv_preds_and_confusion_matrix(PerceptronLearner(100),train,y,cvfolds=cv,probs=False)
+res5 = cv_preds_and_confusion_matrix(SGDClassifier(loss='modified_huber', max_iter=50), train,y,cvfolds=cv,probs=False)
+res6 = cv_preds_and_confusion_matrix(XGBClassifier(max_depth=4), train,y,cvfolds=10, probs=False)
+
+
+for res in [res2,res3, res4, res5, res6]:
+    res.pop("true")
+    res1 = pd.concat((res1, res), axis=1)
+    
+
+
+train = pd.DataFrame(train, columns=cols)
+res1 = pd.concat((res1,train), axis=1)
+
+
+models  = [
+LogisticRegression(C=10),
+SVM.SVC(gamma='auto'),
+#TrustHard(LogisticRegression(C=10)),
+PerceptronLearner(100),
+SGDClassifier(loss='modified_huber', max_iter=50),
+XGBClassifier(max_depth=4)]
+
+
+cv_preds_and_confusion_matrix(VoteClassifier(models,[0,0,1,0,1]),train,y, cvfolds=10, probs=False)
+
+
+
+
+
+
+
+
 #%%
 
 # example use of functions, Principal component analysis and model evaluations
@@ -114,6 +193,9 @@ cv_profits_for_models(models,train,y)
 
 perc = PerceptronLearner(1000)
 cv_profits_for_models([perc], train,y)
+
+
+
 
 
 

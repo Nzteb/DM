@@ -84,18 +84,25 @@ def plot_cv_confidence_vs_profit(model, X, y,cvfolds, modelname="ModelName"):
 # takes a sklearn model and dataset   
 # the threshold is the probab threshold for the model to predict class 1    
 # (sklearn model, Xtrain, y, threshold) --> dataset with predictions/probabilities and true labels    
-def cv_preds_and_confusion_matrix(model_, X, y, cvfolds, threshold=0.5):
+def cv_preds_and_confusion_matrix(model_, X, y, cvfolds, threshold=False, probs=True):
     cvres = pd.DataFrame()
-    model = CustomModelWithThreshold(model_,threshold)
-    cvproba = cross_val_predict(model,X,y,cv=cvfolds, method="predict_proba")
+    if threshold != False:
+        model = CustomModelWithThreshold(model_,threshold)
+    else:
+        model = model_   
+    if probs==True:
+        cvproba = cross_val_predict(model,X,y,cv=cvfolds, method="predict_proba")
     cvpredict = cross_val_predict(model,X,y,cv=cvfolds)
     cvres["true"] = y
-    cvres['cvproba'] = cvproba[:,1]
-    cvres['cvpredict'] = cvpredict
-    TP = sum((cvres['true'] == 1) & (cvres['cvpredict'] == 1))
-    TN = sum((cvres['true'] == 0) & (cvres['cvpredict'] == 0))
-    FP = sum((cvres['true'] == 0) & (cvres['cvpredict'] == 1))
-    FN = sum((cvres['true'] == 1) & (cvres['cvpredict'] == 0))
+    if probs==True:
+        cvres['cvproba'] = cvproba[:,1]
+   
+    predname = 'cvpredict' +"_"+ type(model).__name__     
+    cvres[predname] = cvpredict
+    TP = sum((cvres['true'] == 1) & (cvres[predname] == 1))
+    TN = sum((cvres['true'] == 0) & (cvres[predname] == 0))
+    FP = sum((cvres['true'] == 0) & (cvres[predname] == 1))
+    FN = sum((cvres['true'] == 1) & (cvres[predname] == 0))
     profit = (5*TP -25*FP - 5*FN)
     print('       #### Confusion Matrix ####')
     print(' True negatives: {}'.format(TN) + '   ' + 'False Negatives: {}'.format(FN))
