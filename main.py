@@ -92,8 +92,6 @@ parameters = [
     #    'classifier__estimator__C': [0.5,1,2,5,10,20,30],
     #},
     
-
-    
     {  
        #try different feature combinations  
        'feature_generation__attribs_adder__featurelist': [
@@ -101,7 +99,7 @@ parameters = [
                                       ['quantityModificationsPerLineItem'],
                                       ['valuePerLineItem']],  
        'classifier__estimator': [VotingClassifier(estimators=models,voting='hard')],
-       'classifier__estimator__weights': [[1,0,0,0,0]],
+       'classifier__estimator__weights': weights,
        # params for the single models
        'classifier__estimator__lr__C': [10],
        'classifier__estimator__sgd__loss':['modified_huber'],
@@ -127,8 +125,7 @@ parameters = [
 ]
 
 
-
-gscv = GridSearchCV(model_training_pipeline, parameters, cv=10, n_jobs=1, scoring=profit_scoring, verbose=3)
+gscv = GridSearchCV(model_training_pipeline, parameters, cv=10, n_jobs=-1, scoring=profit_scoring, verbose=3)
 gscv.fit(train, y)
 print(gscv.best_score_)
 print(gscv.best_params_)
