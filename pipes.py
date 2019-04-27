@@ -17,23 +17,13 @@ import numpy as np
 # custom attribute adder
 class CustomAttributeAdder(BaseEstimator, TransformerMixin):
     
-    #A lot of these features seem to be irrelevant and even reduce the score
-    #Maybe reduce the default case to only scannedLineItemsTotal?
+    
     def __init__(self, featurelist = ['scannedLineItemsTotal',
-                                     'valuePerLineItem',
-                                     'quantityModificationsPerLineItem',
-                                     'totalScanTimeInSeconds*lineItemVoids',
-                                     'totalScanTimeInSeconds*scansWithoutRegistration',
-                                     'totalScanTimeInSeconds*scannedLineItemsTotal',
-                                     'lineItemVoids*scansWithoutRegistration',
-                                     'totalScanTimeInSeconds/trustLevel',
-                                     'lineItemVoids/trustLevel',
-                                     'scansWithoutRegistration/trustLevel',
-                                     'scannedLineItemsTotal/trustLevel',
-                                     'trustLevel_Log',
-                                     'grandTotal_Log',
-                                     'quantityModifications_Square',
-                                     'scannedLineItemsTotal_Square']):
+                                       'valuePerLineItem',
+                                       'quantityModificationsPerLineItem',
+                                       'lineItemVoids*scansWithoutRegistration',
+                                       'totalScanTimeInSeconds/trustLevel',
+                                       'trustLevel_Log', ]):
     
         # if you use "_featurelist" sklearn will not set this in gridSearch instead it sets keys of get_params which is "featurelist" 
         self.featurelist = featurelist
@@ -50,53 +40,16 @@ class CustomAttributeAdder(BaseEstimator, TransformerMixin):
             
         if "quantityModificationsPerLineItem" in self.featurelist:
             X['quantityModificationsPerLineItem'] = X['quantityModifications'] / X['scannedLineItemsTotal']
-        
-        #interesting features from feature_engineering notebook
-        #polynomial features
-        
-        if 'totalScanTimeInSeconds*lineItemVoids' in self.featurelist:
-            X['totalScanTimeInSeconds*lineItemVoids'] = X['totalScanTimeInSeconds'] * X['lineItemVoids']
-        
-        if 'totalScanTimeInSeconds*scansWithoutRegistration' in self.featurelist:
-            X['totalScanTimeInSeconds*scansWithoutRegistration'] = X['totalScanTimeInSeconds'] * X['scansWithoutRegistration']
-        
-        if 'totalScanTimeInSeconds*scannedLineItemsTotal' in self.featurelist:
-            X['totalScanTimeInSeconds*scannedLineItemsTotal'] = X['totalScanTimeInSeconds'] * X['scannedLineItemsTotal']
-        
+            
         if 'lineItemVoids*scansWithoutRegistration' in self.featurelist:
             X['lineItemVoids*scansWithoutRegistration'] = X['lineItemVoids'] * X['scansWithoutRegistration']
-        
-        
-        #division features
-        #!!! Be carefull with division by 0 !!!
-        #right now only divison by trustLevel, which is never zero
+            
         if 'totalScanTimeInSeconds/trustLevel' in self.featurelist:
             X['totalScanTimeInSeconds/trustLevel'] = X['totalScanTimeInSeconds'] / X['trustLevel']
         
-        if 'lineItemVoids/trustLevel' in self.featurelist:
-            X['lineItemVoids/trustLevel'] = X['lineItemVoids'] / X['trustLevel']
-        
-        if 'scansWithoutRegistration/trustLevel' in self.featurelist:
-            X['scansWithoutRegistration/trustLevel'] = X['scansWithoutRegistration'] / X['trustLevel']
-        
-        if 'scannedLineItemsTotal/trustLevel' in self.featurelist:
-            X['scannedLineItemsTotal/trustLevel'] = X['scannedLineItemsTotal'] / X['trustLevel']
-        
-        
-        #Log features
         if 'trustLevel_Log' in self.featurelist:
             X['trustLevel_Log'] = np.log(X['trustLevel'])
-        
-        if 'grandTotal_Log' in self.featurelist:
-            X['grandTotal_Log'] = np.log(X['grandTotal'])
-        
-        #Square features
-        if 'quantityModifications_Square' in self.featurelist:
-            X['quantityModifications_Square'] = np.square(X['quantityModifications'])
-        
-        if 'scannedLineItemsTotal_Square' in self.featurelist:
-            X['scannedLineItemsTotal_Square'] = np.square(X['scannedLineItemsTotal'])
-        
+            
         return X
     
 
