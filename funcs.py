@@ -49,6 +49,7 @@ def cv_profits_for_models(models, X, y):
         print("Model: " + type(model).__name__)
         print("Estimated Profit: " + str(profit))
         print("")
+        return profit
     
     
 # takes any sklearn model, X, y , num folds --> none

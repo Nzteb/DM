@@ -92,21 +92,31 @@ parameters = [
     #    'classifier__estimator__C': [0.5,1,2,5,10,20,30],
     #},
     
-    {  
+    #{  
        #try different feature combinations  
-       'feature_generation__attribs_adder__featurelist': [
-                                      ['valuePerLineItem','quantityModificationsPerLineItem'],
-                                      ['quantityModificationsPerLineItem'],
-                                      ['valuePerLineItem']],  
-       'classifier__estimator': [VotingClassifier(estimators=models,voting='hard')],
+    #   'feature_generation__attribs_adder__featurelist': [
+    #                                  ['valuePerLineItem','quantityModificationsPerLineItem'],
+    #                                  ['quantityModificationsPerLineItem'],
+    #                                  ['valuePerLineItem']],  
+       {'classifier__estimator': [VotingClassifier(estimators=models,voting='hard')],
        'classifier__estimator__weights': weights,
        # params for the single models
-       'classifier__estimator__lr__C': [10],
+       
+       'classifier__estimator__lr__C': [5,10,20,30,40,50,100,200],
+       
        'classifier__estimator__sgd__loss':['modified_huber'],
-       'classifier__estimator__sgd__max_iter':[50],
-       'classifier__estimator__xgb__max_depth': [4],
-       #'classifier__estimator__perc__epochs':[100]
-    },
+       'classifier__estimator__sgd__max_iter':[100],
+       'classifier__estimator__sgd__penalty':['l2', 'elasticnet', 'l1'],
+       
+       
+       
+       'classifier__estimator__xgb__max_depth': list(range(10)),
+       'classifier__estimator__xgb__n_estimators': [10,15,30,70,200],
+       
+       'classifier__estimator__svm__C': list(np.arange(0.1,5,0.2)),
+       'classifier__estimator__svm__kernel': ['linear', 'poly', 'rbf']
+       
+    }
     
     
     #{
@@ -124,9 +134,17 @@ parameters = [
     
 ]
 
+train['fraud'] = y
+train1 = train[train["trustLevel"]==2]
+train2 = train[train["trustLevel"]==1]
 
-gscv = GridSearchCV(model_training_pipeline, parameters, cv=10, n_jobs=-1, scoring=profit_scoring, verbose=3)
-gscv.fit(train, y)
+y1 = train1.pop('fraud')
+y2 = train2.pop('fraud')
+
+
+cv = StratifiedKFold(n_splits=10, random_state=42)
+gscv = GridSearchCV(model_training_pipeline, parameters, cv=cv, n_jobs=-1, scoring=profit_scoring, verbose=3)
+gscv.fit(train1, y1)
 print(gscv.best_score_)
 print(gscv.best_params_)
 gscv.best_estimator_.named_steps

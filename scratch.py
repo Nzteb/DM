@@ -23,6 +23,441 @@ import itertools
 
 #%%
 
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score, cross_validate
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+import itertools
+
+from sklearn import svm as SVM
+from funcs import cv_profits_for_models, cv_preds_and_confusion_matrix, CustomModelWithThreshold
+from funcs import profit_scorer, profit_scoring
+from customClassifiers import OutlierRemover
+from xgboost import XGBClassifier
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+test = pd.read_csv('test.csv', delimiter="|")
+
+
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
+train['valuePerLineItem'] = train['grandTotal'] / train['scannedLineItemsTotal']
+train['quantityModificationsPerLineItem'] = train['quantityModifications'] / train['scannedLineItemsTotal']
+train['lineItemVoids*scansWithoutRegistration'] = train['lineItemVoids'] * train['scansWithoutRegistration']
+
+train = train[train['trustLevel']]
+y = train.pop('fraud')
+cols = train.columns
+
+
+scaler = StandardScaler()
+scaler.fit(train)
+train = scaler.transform(train)
+
+train = pd.DataFrame(train, columns=cols)
+#train['fraud']=np.float64(y) 
+
+
+om = OutlierRemover(LogisticRegression(C=20))
+#res = cv_preds_and_confusion_matrix(om, train,y, cvfolds=10, probs=False)
+
+xgb = XGBClassifier(n_estimators=331, max_depth=8, gamma=0.03, reg_alpha=0.78)
+
+cv = StratifiedKFold(n_splits=10, random_state=42)
+print(sum(cross_validate(om, train,y, cv=cv, scoring=profit_scoring )['test_score']))
+
+#res = cv_preds_and_confusion_matrix(LogisticRegression(C=20), train,y, cvfolds=10, probs=False)
+
+
+
+
+#%% outlier plots
+
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+import itertools
+
+from sklearn import svm as SVM
+from funcs import cv_profits_for_models, cv_preds_and_confusion_matrix, CustomModelWithThreshold
+from funcs import profit_scorer
+from customClassifiers import OutlierRemover
+
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+test = pd.read_csv('test.csv', delimiter="|")
+
+
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
+train['valuePerLineItem'] = train['grandTotal'] / train['scannedLineItemsTotal']
+train['quantityModificationsPerLineItem'] = train['quantityModifications'] / train['scannedLineItemsTotal']
+train['lineItemVoids*scansWithoutRegistration'] = train['lineItemVoids'] * train['scansWithoutRegistration']
+
+train = train[train['trustLevel']<2]
+y = train.pop('fraud')
+cols = train.columns
+
+
+scaler = StandardScaler()
+scaler.fit(train)
+train = scaler.transform(train)
+
+train = pd.DataFrame(train, columns=cols)
+train['fraud']=np.float64(y) 
+
+
+
+#interesting plots
+pairs=[#('trustLevel', 'scannedLineItemsPerSecond'),
+        #('trustLevel', 'scannedLineItemsTotal'),
+        #('trustLevel', 'valuePerLineItem'),
+        #('trustLevel', 'quantityModificationsPerLineItem'),
+        ('totalScanTimeInSeconds', 'scannedLineItemsPerSecond'),
+        #('totalScanTimeInSeconds', 'scannedLineItemsTotal'),
+        #('totalScanTimeInSeconds', 'valuePerLineItem'),
+        ('grandTotal', 'scannedLineItemsPerSecond'),
+        ('grandTotal', 'valuePerSecond'),
+        #('grandTotal', 'lineItemVoidsPerPosition'),
+        #('grandTotal', 'scannedLineItemsTotal'),
+        #('grandTotal', 'valuePerLineItem'),
+        #('grandTotal', 'quantityModificationsPerLineItem'),
+        #('lineItemVoids', 'scannedLineItemsPerSecond'),
+        #('lineItemVoids', 'valuePerSecond'),
+        #('lineItemVoids', 'scannedLineItemsTotal'),
+        #('lineItemVoids', 'quantityModificationsPerLineItem'),
+        #('scansWithoutRegistration', 'scannedLineItemsPerSecond'),
+        #('scansWithoutRegistration', 'lineItemVoidsPerPosition'),
+        #('scansWithoutRegistration', 'quantityModificationsPerLineItem'),
+        #('quantityModifications', 'scannedLineItemsTotal'),
+        ('scannedLineItemsPerSecond', 'valuePerSecond'),
+        #('scannedLineItemsPerSecond', 'scannedLineItemsTotal'),
+        #('scannedLineItemsPerSecond', 'valuePerLineItem'),
+        #('valuePerLineItem', 'quantityModificationsPerLineItem')]
+        ('grandTotal', 'valuePerSecond')]
+    
+
+
+
+for pair in pairs:
+    train_0 = train[train['fraud']==0]
+    train_1 = train[train['fraud']==1]
+    
+    #use axis scaling of the fraudster instances
+    minx = min(train_1[pair[0]])
+    maxx = max(train_1[pair[0]])
+    
+    miny = min(train_1[pair[1]])
+    maxy = max(train_1[pair[1]])
+    
+    
+    plt.xlabel(pair[0])
+    plt.ylabel(pair[1])
+    plt.xlim(minx-0.1,maxx+0.1)
+    plt.ylim(miny-0.1,maxy+0.1)
+    plt.scatter(train_0[pair[0]], train_0[pair[1]])
+    plt.scatter(train_1[pair[0]], train_1[pair[1]], color='yellow')
+    plt.show()
+
+
+y = train.pop('fraud')
+lr = LogisticRegression(C=20)
+
+
+res = cv_preds_and_confusion_matrix(lr,train,y, cvfolds=10)
+
+
+print(len(train))
+train['fraud'] = y
+
+
+loose1 = -1*((train['valuePerSecond']>-0.1) & (train['fraud']==1.0)) + 1
+loose2 = -1*((train['scannedLineItemsPerSecond']>0.2) & (train['fraud']==1.0)) +1
+
+train = train[loose1.astype('bool')]
+train = train[loose2.astype('bool')]
+
+print(len(train))
+
+y = train.pop('fraud')
+
+res = cv_preds_and_confusion_matrix(lr, train,y, cvfolds=10)
+
+
+
+
+
+
+
+
+#%%
+
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+import itertools
+
+from sklearn import svm as SVM
+from funcs import cv_profits_for_models, cv_preds_and_confusion_matrix, CustomModelWithThreshold
+from funcs import profit_scorer
+
+
+
+
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+test = pd.read_csv('test.csv', delimiter="|")
+
+train = train[train['trustLevel']<3]
+
+y = train.pop('fraud')
+cols = train.columns
+scaler = StandardScaler()
+scaler.fit(train)
+train = scaler.transform(train)
+
+train = pd.DataFrame(train, columns=cols)
+train['fraud']=y 
+
+
+
+train1 = train
+#train1 = train[train['trustLevel']==1]
+train2 = train[train['trustLevel']==2]
+
+y1 = train1.pop('fraud')
+train1['scannedLineItemsTotal'] = train1['scannedLineItemsPerSecond'] * train1['totalScanTimeInSeconds']
+train1['valuePerLineItem'] = train1['grandTotal'] / train1['scannedLineItemsTotal']
+train1['quantityModificationsPerLineItem'] = train1['quantityModifications'] / train1['scannedLineItemsTotal']
+train1['lineItemVoids*scansWithoutRegistration'] = train1['lineItemVoids'] * train1['scansWithoutRegistration']
+
+
+
+y2 = train2.pop('fraud')
+train2['scannedLineItemsTotal'] = train2['scannedLineItemsPerSecond'] * train2['totalScanTimeInSeconds']
+train2['valuePerLineItem'] = train2['grandTotal'] / train2['scannedLineItemsTotal']
+train2['quantityModificationsPerLineItem'] = train2['quantityModifications'] / train2['scannedLineItemsTotal']
+train2['lineItemVoids*scansWithoutRegistration'] = train2['lineItemVoids'] * train2['scansWithoutRegistration']
+
+
+
+
+pairs = list(itertools.combinations(train1.columns,2))
+
+
+train1['fraud']=y1
+train2['fraud']=y2
+
+train1.sort_values(by='fraud',ascending=False)
+
+for pair in pairs:
+    print(pair)
+    train1_0 = train1[train1['fraud']==0]
+    train1_1 = train1[train1['fraud']==1]
+    plt.scatter(train1_0[pair[0]], train1_0[pair[1]])
+    plt.scatter(train1_1[pair[0]], train1_1[pair[1]], color='yellow')
+    plt.show()
+    train2_0 = train2[train2['fraud']==0]
+    train2_1 = train2[train2['fraud']==1]
+    plt.scatter(train2_0[pair[0]], train2_0[pair[1]])
+    plt.scatter(train2_1[pair[0]], train2_1[pair[1]], color='yellow')
+    plt.show()
+
+
+
+
+#interesting plots
+pairs=[('trustLevel', 'scannedLineItemsPerSecond'),
+        ('trustLevel', 'scannedLineItemsTotal'),
+        ('trustLevel', 'valuePerLineItem'),
+        ('trustLevel', 'quantityModificationsPerLineItem'),
+        ('totalScanTimeInSeconds', 'scannedLineItemsPerSecond'),
+        ('totalScanTimeInSeconds', 'scannedLineItemsTotal'),
+        ('totalScanTimeInSeconds', 'valuePerLineItem'),
+        ('grandTotal', 'scannedLineItemsPerSecond'),
+        ('grandTotal', 'valuePerSecond'),
+        ('grandTotal', 'lineItemVoidsPerPosition'),
+        ('grandTotal', 'scannedLineItemsTotal'),
+        ('grandTotal', 'valuePerLineItem'),
+        ('grandTotal', 'quantityModificationsPerLineItem'),
+        ('lineItemVoids', 'scannedLineItemsPerSecond'),
+        ('lineItemVoids', 'valuePerSecond'),
+        ('lineItemVoids', 'scannedLineItemsTotal'),
+        ('lineItemVoids', 'quantityModificationsPerLineItem'),
+        ('scansWithoutRegistration', 'scannedLineItemsPerSecond'),
+        ('scansWithoutRegistration', 'lineItemVoidsPerPosition'),
+        ('scansWithoutRegistration', 'quantityModificationsPerLineItem'),
+        ('quantityModifications', 'scannedLineItemsTotal'),
+        ('scannedLineItemsPerSecond', 'valuePerSecond'),
+        ('scannedLineItemsPerSecond', 'scannedLineItemsTotal'),
+        ('scannedLineItemsPerSecond', 'valuePerLineItem'),
+        ('valuePerLineItem', 'quantityModificationsPerLineItem')]
+    
+    
+    
+
+
+
+#%%
+
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+import itertools
+
+from sklearn import svm as SVM
+from funcs import cv_profits_for_models, cv_preds_and_confusion_matrix, CustomModelWithThreshold
+from funcs import profit_scorer
+
+svm = SVM.SVC(C=10)
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
+train = train[train["trustLevel"]<3]
+y = train.pop('fraud')
+
+
+scaler = StandardScaler()
+scaler.fit(train)
+train_ = scaler.transform(train)
+lr.fit(train_,y)
+
+res = cv_preds_and_confusion_matrix(svm, train_,y,cvfolds=10, probs=False)
+svm.fit(train_,y)
+svm.predict(train)
+
+profit_scorer(y,svm.predict(train_))
+
+
+#%%
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+import itertools
+
+from funcs import cv_profits_for_models, cv_preds_and_confusion_matrix, CustomModelWithThreshold
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+
+train = train[train["trustLevel"]<3]
+#train.pop("trustLevel")
+
+test = pd.read_csv('test.csv', delimiter="|")
+y = train.pop('fraud')
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
+#train['valuePerLineItem'] = train['grandTotal'] / train['scannedLineItemsTotal']
+#train['quantityModificationsPerLineItem'] = train['quantityModifications'] / train['scannedLineItemsTotal']
+
+
+cols = train.columns
+lr = CustomModelWithThreshold(LogisticRegression(C=42), 0.5)
+scaler = StandardScaler()
+scaler.fit(train)
+train_ = scaler.transform(train)
+lr.fit(train_,y)
+
+#coef = list(lr.coef_[0])
+#
+#for i in range(len(coef)):
+#    print("var: {}".format((cols[i])))
+#    print("coef: {}.".format(coef[i]))
+#
+
+res = cv_preds_and_confusion_matrix(lr, train_,y,cvfolds=10)
+
+
+
+
+#%%  from the original variables + total line items test all possible feature subsets
+# should be incorporated into the pipeline and adjust by the new features from niklas
+
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+import itertools
+
+from funcs import cv_profits_for_models, cv_preds_and_confusion_matrix
+
+train = pd.read_csv('train.csv' ,delimiter="|")
+test = pd.read_csv('test.csv', delimiter="|")
+y = train.pop('fraud')
+train['scannedLineItemsTotal'] = train['scannedLineItemsPerSecond'] * train['totalScanTimeInSeconds']
+train['valuePerLineItem'] = train['grandTotal'] / train['scannedLineItemsTotal']
+
+lr = LogisticRegression(C=20)
+counter = 0
+cols = train.columns
+profits = []
+feat_list = []
+
+
+for size in range(1,len(cols)+1):
+    features = list(itertools.combinations(cols,size))
+    for comb in list(features):
+        print(list(comb))
+        train_ = train[list(comb)]
+        scaler = StandardScaler()
+        scaler.fit(train_)
+        train_ = scaler.transform(train_)
+        profit = cv_profits_for_models([lr], train_, y)
+        profits.append(profit)
+        feat_list.append(list(comb))
+        counter += 1
+        print("########################")
+        print(counter)
+        print("########################")
+
+
+
+idx = profits.index(max(profits))
+best = feat_list[idx]
+
+
+print("Best features are:")
+print(best)        
+        
+
+#%%
+
 #investigate different linear models
 
 import pandas as pd
@@ -89,7 +524,7 @@ SGDClassifier(loss='modified_huber', max_iter=50),
 XGBClassifier(max_depth=4)]
 
 
-cv_preds_and_confusion_matrix(VoteClassifier(models,[0,0,1,0,1]),train,y, cvfolds=10, probs=False)
+cv_preds_and_confusion_matrix(VoteClassifier(models,[1,0,1,0,1]),train,y, cvfolds=10, probs=False)
 
 
 

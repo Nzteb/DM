@@ -167,6 +167,35 @@ class PerceptronLearner(BaseEstimator, ClassifierMixin):
         self.coef_ = weight_sequence[profits.index(max(profits))]
         return self
         
+
+class OutlierRemover(BaseEstimator, ClassifierMixin):
+    def __init__(self, model, thrs=(-0.1,0.2)):
+        #sklearn model object
+        self.model = model
+        self.thrs = thrs
+          
+    def fit(self,X,y):
+        self.classes_ = np.unique(y)
+        #indx to filter out
+                
+        X = X.copy()
+        y = y.copy()
+        X['fraud'] = np.float64(y)
+        keep1 = -1*((X['valuePerSecond']>self.thrs[0]) & (X['fraud']==1.0)) + 1
+        keep2 = -1*((X['scannedLineItemsPerSecond']>self.thrs[1]) & (X['fraud']==1.0)) +1
+
+        X = X[keep1.astype('bool')]
+        X = X[keep2.astype('bool')]
+        y = X.pop('fraud')
+        self.model.fit(X,y)
+        return self
+
+    def predict(self,X):
+        preds = self.model.predict(X)
+        return preds
+
+    #def predict_proba(self,X):
+        #return self.model.predict_proba(X)
         
 
 
