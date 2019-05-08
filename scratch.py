@@ -51,7 +51,7 @@ train['valuePerLineItem'] = train['grandTotal'] / train['scannedLineItemsTotal']
 train['quantityModificationsPerLineItem'] = train['quantityModifications'] / train['scannedLineItemsTotal']
 train['lineItemVoids*scansWithoutRegistration'] = train['lineItemVoids'] * train['scansWithoutRegistration']
 
-train = train[train['trustLevel']]
+#train = train[train['trustLevel']==2]
 y = train.pop('fraud')
 cols = train.columns
 
@@ -64,18 +64,15 @@ train = pd.DataFrame(train, columns=cols)
 #train['fraud']=np.float64(y) 
 
 
-om = OutlierRemover(LogisticRegression(C=20))
-#res = cv_preds_and_confusion_matrix(om, train,y, cvfolds=10, probs=False)
+lr = LogisticRegression(C=27, solver='lbfgs')
+res = cv_preds_and_confusion_matrix(LogisticRegression(C=20), train,y, cvfolds=10, probs=False)
 
-xgb = XGBClassifier(n_estimators=331, max_depth=8, gamma=0.03, reg_alpha=0.78)
+profits = []
+for i in range(100):
+    cv = StratifiedKFold(n_splits=10, random_state=i, shuffle=True)
+    profits.append(sum(cross_validate(lr, train,y, cv=cv, scoring=profit_scoring)['test_score']))
 
-cv = StratifiedKFold(n_splits=10, random_state=42)
-print(sum(cross_validate(om, train,y, cv=cv, scoring=profit_scoring )['test_score']))
-
-#res = cv_preds_and_confusion_matrix(LogisticRegression(C=20), train,y, cvfolds=10, probs=False)
-
-
-
+print(np.mean(profits))    
 
 #%% outlier plots
 
